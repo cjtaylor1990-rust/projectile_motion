@@ -28,7 +28,6 @@ impl Force {
     }
 }
 
-//#[derive(Debug)]
 struct IntegrationStats {
     total_steps: i32
 }
