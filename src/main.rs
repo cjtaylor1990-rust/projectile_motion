@@ -7,6 +7,7 @@ struct Velocity(f64, f64, f64);
 #[derive(Debug)]
 struct Particle {
     mass: f64,
+    time: f64,
     position: Position,
     velocity: Velocity
 }
@@ -14,60 +15,72 @@ struct Particle {
 struct Force {}
 
 impl Force {
-    fn fx(_step: f64) -> f64 {
+    fn fx(_time: f64) -> f64 {
         0.0
     }
 
-    fn fy(_step: f64) -> f64 {
+    fn fy(_time: f64) -> f64 {
         0.0
     }
 
-    fn fz(_step: f64) -> f64 {
+    fn fz(_time: f64) -> f64 {
         -9.8
     }
 }
 
+//#[derive(Debug)]
+struct IntegrationStats {
+    total_steps: i32
+}
+
 struct Integrator {
-    step_size: f64,
+    step_duration: f64,
 }
 
 impl Integrator {
-    fn stopping_condition(step: f64, particle: &Particle) -> bool{
-        step != 0.0 && (particle.position.2 <= 0.0 || step > 100000.0)
+    fn stopping_condition(step: i32, particle: &Particle) -> bool{
+        step != 0 && (particle.position.2 <= 0.0 || step > 100000)
     }
 
-    fn take_step(&self, step: f64 , particle: &mut Particle) {
+    fn take_step(&self, particle: &mut Particle) {
         particle.velocity = Velocity(
-            particle.velocity.0 + (Force::fx(step)/particle.mass)*self.step_size,
-            particle.velocity.1 + (Force::fy(step)/particle.mass)*self.step_size,
-            particle.velocity.2 + (Force::fz(step)/particle.mass)*self.step_size
+            particle.velocity.0 + (Force::fx(particle.time)/particle.mass)*self.step_duration,
+            particle.velocity.1 + (Force::fy(particle.time)/particle.mass)*self.step_duration,
+            particle.velocity.2 + (Force::fz(particle.time)/particle.mass)*self.step_duration
         );
         particle.position = Position(
-            particle.position.0 + particle.velocity.0*self.step_size,
-            particle.position.1 + particle.velocity.1*self.step_size,
-            particle.position.2 + particle.velocity.2*self.step_size
+            particle.position.0 + particle.velocity.0*self.step_duration,
+            particle.position.1 + particle.velocity.1*self.step_duration,
+            particle.position.2 + particle.velocity.2*self.step_duration
         );
+        particle.time += self.step_duration;
     }
 
-    fn integrate(self, particle: &mut Particle) {
-        let mut step = 0.0;
+    fn integrate(self, particle: &mut Particle) -> IntegrationStats {
+        let mut step = 0;
         while !Integrator::stopping_condition(step, particle) {
-            self.take_step(step, particle);
-            step = step + self.step_size;
+            self.take_step(particle);
+            step += 1;
+        }
+
+        IntegrationStats {
+            total_steps: step
         }
     }
 }
 
 fn main() {
-    let integrator = Integrator { step_size: 0.01 };
+    let integrator = Integrator { step_duration: 0.01 };
 
     let mut particle = Particle {
         mass: 1.0,
+        time: 0.0,
         position: Position(0.0, 0.0, 0.0),
         velocity: Velocity(20.0, 20.0, 20.0)
     };
 
-    integrator.integrate(&mut particle);
+    let stats = integrator.integrate(&mut particle);
 
-    println!("{:?}", particle);
+    println!("Integration took {} steps.", stats.total_steps);
+    println!("Final state: {:#?}", particle);
 }
